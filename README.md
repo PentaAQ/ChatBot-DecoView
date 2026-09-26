@@ -4,7 +4,7 @@
 
 Chatbot web hecho con **Streamlit** que funciona como asesor personal de compra para **DecoView**, una tienda peruana (ficticia) de mobiliario y decoración que vende solo en línea. El asesor ayuda al cliente a elegir un mueble que **entre en su espacio, combine con su ambiente y no termine devuelto**.
 
-La IA corre sobre **Groq** (gratis, sin tarjeta de crédito) con el modelo `openai/gpt-oss-120b`.
+La IA corre sobre **Groq** (gratis, sin tarjeta de crédito) con el modelo `openai/gpt-oss-120b`. El cliente también puede contar su espacio con la voz: 🎙️ grabando desde el propio campo de chat (se transcribe y se envía al instante) o 📎 adjuntando un archivo de audio (se transcribe y el cliente revisa el texto antes de enviarlo). Todo con `faster-whisper` corriendo en el equipo local, sin nube.
 
 ---
 
@@ -43,7 +43,9 @@ El asesor habla en español peruano, trata de "tú" y tiene la instrucción de *
 | **Ficha de tu espacio** | En la barra lateral, el cliente anota ambiente, ancho × largo (la app calcula los m²), estilo y colores. Esa ficha se envía al modelo en cada mensaje, así no vuelve a preguntar lo que ya sabe. |
 | **Sugerencias de inicio** | Cuatro preguntas de ejemplo para empezar con un clic. Solo aparecen con la conversación vacía. |
 | **Reiniciar conversación** | Borra el historial y empieza de cero. |
-| **Errores explicados** | Si algo falla (clave inválida, límite gratuito, sin conexión…), el chat dice la causa exacta y qué hacer. Ver [sección 6](#6-mensajes-de-error-y-soluciones). |
+| **Grabar voz** | Ícono nativo de micrófono dentro del propio campo de chat: graba y al enviarlo se transcribe con `faster-whisper` (100% local) y se manda al asesor de una vez. |
+| **Adjuntar audio** | Botón "Adjuntar audio" junto al chat: sube un archivo (MP3, WAV, M4A, OGG o FLAC), se transcribe localmente y el texto queda en un cuadro editable — lo revisas o corriges y recién ahí lo envías. |
+| **Errores explicados** | Si algo falla (clave inválida, límite gratuito, sin conexión, audio inválido…), la app dice la causa exacta y qué hacer. Ver [sección 6](#6-mensajes-de-error-y-soluciones). |
 | **Diseño propio** | Paleta de materiales (cal, lino, nogal, terracota), tipografía Fraunces + Figtree y una wincha (cinta métrica) como elemento de marca. Se adapta a móvil. |
 
 ---
@@ -53,7 +55,9 @@ El asesor habla en español peruano, trata de "tú" y tiene la instrucción de *
 ### Requisitos
 
 - **Python 3.10 o superior**. Compruébalo con `python3 --version`.
-- Una **API Key gratuita de Groq** (el paso 3 explica cómo conseguirla).
+- Una **API Key gratuita de Groq** (el paso 3 explica cómo conseguirla) — la app la pide al arrancar, incluso para usar solo la nota de voz.
+- Conexión a internet la primera vez que grabes o adjuntes audio: `faster-whisper` descarga el modelo `base` (~140 MB) y lo guarda en caché local; después transcribe sin conexión.
+- Para grabar con el ícono del micrófono, el navegador pedirá permiso de audio la primera vez.
 
 ### Paso 1: descargar el proyecto
 
@@ -109,7 +113,7 @@ pip install -r requirements.txt
 Con el entorno virtual activado:
 
 ```bash
-streamlit run app_openai.py
+streamlit run app.py
 ```
 
 La app se abre en el navegador, normalmente en **http://localhost:8501**. Para detenerla, pulsa `Ctrl + C` en la terminal.
@@ -122,9 +126,9 @@ La app se abre en el navegador, normalmente en **http://localhost:8501**. Para d
 
 ```
 ChatBot DecoView/
-├── app_openai.py                 → Toda la lógica: interfaz, ficha, chat y llamada a la IA
-├── styles.css                    → Diseño: colores, tipografías, wincha, chat y barra lateral
-├── requirements.txt              → Dependencias (streamlit, openai)
+├── app.py                        → Toda la lógica: interfaz, ficha, nota de voz, chat y llamada a la IA
+├── styles.css                    → Diseño: colores, tipografías, wincha, chat, nota de voz y barra lateral
+├── requirements.txt              → Dependencias (streamlit, openai, faster-whisper)
 ├── .gitignore                    → Excluye secretos, entorno virtual, cachés y herramientas locales
 └── .streamlit/
     ├── config.toml               → Tema de Streamlit (colores base de la app)
@@ -134,12 +138,21 @@ ChatBot DecoView/
 
 ### ¿Por qué se usa la librería `openai` si la IA es de Groq?
 
-Groq ofrece una API **compatible con la de OpenAI**, así que el código usa el cliente oficial `openai` de Python y solo le cambia dos cosas: la dirección del servidor (`base_url="https://api.groq.com/openai/v1"`) y el nombre del modelo. El archivo conserva el nombre `app_openai.py` por historia del proyecto, que empezó usando OpenAI.
+Groq ofrece una API **compatible con la de OpenAI**, así que el código usa el cliente oficial `openai` de Python y solo le cambia dos cosas: la dirección del servidor (`base_url="https://api.groq.com/openai/v1"`) y el nombre del modelo.
+
+### La nota de voz
+
+Hay dos caminos, con distinto nivel de control, por una limitación técnica de Streamlit: `st.chat_input` no tiene forma de precargar texto (no existe un parámetro `value`), así que no es posible grabar/adjuntar y mostrar el resultado *dentro* de ese mismo campo para revisarlo antes de enviar — en cuanto el widget recibe algo, ya lo está enviando.
+
+- **Grabar (ícono de micrófono, nativo del chat_input, `accept_audio=True`)**: el cliente graba y al presionar enviar, `transcribir_audio()` transcribe el audio y ese texto se manda al asesor en el acto, igual que un mensaje escrito. No hay paso de revisión posible aquí porque el envío ya ocurrió dentro del propio widget nativo.
+- **Adjuntar audio (botón aparte, con `st.file_uploader` en un panel)**: como este control es nuestro (no vive dentro del chat_input), sí podemos mostrar la transcripción en un cuadro de texto editable con un botón **Enviar** — el cliente la revisa o corrige antes de mandarla.
+
+En ambos casos, `transcribir_audio()` guarda el audio en un archivo temporal, lo transcribe con un modelo **Whisper** (`base`, cuantizado a `int8`) vía `faster-whisper` — cargado una sola vez en memoria con `@st.cache_resource` — y borra el temporal. Todo corre en el equipo local, sin depender de Groq ni de ninguna API externa; lo que sí requiere la `GROQ_API_KEY` es llegar a la pantalla del chat donde viven estos controles.
 
 ### Flujo de una pregunta
 
 ```
-El cliente escribe (o hace clic en una sugerencia)
+El cliente escribe, hace clic en una sugerencia o envía una nota de voz transcrita
         │
         ▼
 El mensaje se guarda en el historial (st.session_state.messages)
@@ -157,11 +170,13 @@ Groq (openai/gpt-oss-120b) genera la respuesta
 Se muestra en el chat y se guarda en el historial
 ```
 
-### Las piezas clave de `app_openai.py`
+### Las piezas clave de `app.py`
 
 - **`SYSTEM_PROMPT`**: el texto que define quién es el asesor, el contexto de la empresa, cómo debe comportarse y cómo estructurar sus respuestas. Es el "cerebro" del bot: la app no tiene base de datos ni catálogo, así que todo lo que el asesor sabe sale de aquí.
 - **`contexto_ficha()`**: convierte lo que el cliente llenó en la barra lateral en un mensaje de sistema adicional. No se guarda en el historial, se recalcula en cada pregunta, así que si el cliente cambia una medida el asesor la usa de inmediato.
+- **`transcribir_audio()`**: recibe el audio (grabado o adjuntado), lo pasa por Whisper y devuelve el texto (ver [«La nota de voz»](#la-nota-de-voz)).
 - **`st.session_state.messages`**: la memoria de la conversación. Vive en la sesión del navegador y se pierde al recargar la página.
+- **`st.session_state.pendiente`**: el "buzón" que usan las sugerencias y el botón Enviar del audio adjuntado para dejar su texto, y que el flujo normal del chat recoge como si el cliente lo hubiera tecleado.
 - **Manejo de errores**: cada tipo de error de la API tiene su propio mensaje en español (ver [sección 6](#6-mensajes-de-error-y-soluciones)).
 
 ### El modelo "piensa" antes de responder
@@ -172,7 +187,7 @@ Se muestra en el chat y se guarda en el historial
 
 ## 5. Personalización
 
-Todo se cambia editando `app_openai.py` o `styles.css`:
+Todo se cambia editando `app.py` o `styles.css`:
 
 | Quiero cambiar… | Dónde |
 |---|---|
@@ -181,6 +196,8 @@ Todo se cambia editando `app_openai.py` o `styles.css`:
 | Qué tan creativa o larga es la respuesta | `temperature` y `max_tokens` en la llamada `client.chat.completions.create(...)` |
 | Las preguntas de ejemplo | Lista `SUGERENCIAS` |
 | Las opciones de ambiente o estilo | Los `st.selectbox` dentro de `with st.sidebar:` |
+| Los formatos de audio aceptados | Lista `FORMATOS_AUDIO` |
+| El tamaño/precisión del modelo de transcripción | `WhisperModel("base", ...)` en `cargar_modelo_whisper()` — otras opciones: `tiny`, `small`, `medium`, `large-v3` (más grandes = más precisos y más lentos) |
 | Colores y tipografías | Variables al inicio de `styles.css` (`--terracota`, `--cal`, `--lino`…) y `.streamlit/config.toml` |
 
 ---
@@ -205,7 +222,8 @@ Si algo falla, el chat muestra un mensaje claro y, cuando sirve, el detalle téc
 
 **Otros problemas comunes**
 
-- **`command not found: streamlit`**: el entorno virtual no está activado. Actívalo (paso 2) o ejecuta `./.venv/bin/streamlit run app_openai.py`.
+- **`command not found: streamlit`**: el entorno virtual no está activado. Actívalo (paso 2) o ejecuta `./.venv/bin/streamlit run app.py`.
+- **La transcripción tarda mucho o se traba la primera vez**: la primera ejecución descarga el modelo `base` de Whisper (~140 MB). Espera a que termine; las siguientes veces carga desde la caché local.
 - **Sigue apareciendo un error que ya corregiste**: Streamlit puede estar ejecutando la versión anterior del código. Detén la app con `Ctrl + C`, vuelve a lanzarla y recarga el navegador.
 
 ---
@@ -216,3 +234,4 @@ Si algo falla, el chat muestra un mensaje claro y, cuando sirve, el detalle téc
 - **Sin memoria persistente.** La conversación se pierde al recargar la página, porque no hay base de datos.
 - **Sin autenticación.** Si publicas la app (por ejemplo en Streamlit Community Cloud), cualquiera con el enlace puede usarla y consumir tu cuota gratuita de Groq.
 - **Plan gratuito de Groq.** Alcanza de sobra para uso personal o demos, pero no está pensado para muchos usuarios al mismo tiempo.
+- **Transcripción sin GPU.** La nota de voz corre en CPU con el modelo `base`, suficiente para notas cortas; audios largos o con mucho ruido de fondo tardan más y pueden perder precisión.

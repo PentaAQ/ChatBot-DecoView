@@ -373,6 +373,106 @@ html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
     border-top: 1px solid var(--veta-suave);
 }
 
+/* ------------------------------------------------------------------
+   Nota de voz: grabar usa el ícono nativo del chat_input; adjuntar un
+   archivo abre este panel, con revisión antes de enviar.
+   ------------------------------------------------------------------ */
+[data-testid="stCaptionContainer"] p {
+    font-size: 12px;
+    color: var(--arena);
+}
+
+.st-key-adjuntar_audio {
+    margin: 4px 0 8px;
+}
+
+.st-key-adjuntar_audio button {
+    width: auto;
+    min-height: 36px;
+    padding: 0 14px;
+    background: transparent;
+    border: 1px solid var(--veta-firme);
+    border-radius: var(--r-control);
+    color: var(--nogal);
+    font-size: 13px;
+    font-weight: 500;
+    transition: border-color 160ms var(--curva), color 160ms var(--curva);
+}
+
+.st-key-adjuntar_audio button:hover {
+    border-color: var(--terracota);
+    color: var(--terracota);
+    background: transparent;
+}
+
+[data-testid="stPopoverBody"] {
+    background: var(--lino);
+    border: 1px solid var(--veta);
+    border-radius: var(--r-card);
+}
+
+[data-testid="stFileUploaderDropzone"] {
+    background: var(--lino-hundido);
+    border: 1px dashed var(--veta-firme);
+    border-radius: var(--r-campo);
+    transition: border-color 160ms var(--curva), background-color 160ms var(--curva);
+}
+
+[data-testid="stFileUploaderDropzone"]:hover {
+    border-color: var(--terracota);
+    background: var(--lino-hundido);
+}
+
+[data-testid="stFileUploaderDropzoneInstructions"] span,
+[data-testid="stFileUploaderDropzoneInstructions"] small {
+    color: var(--nogal);
+}
+
+[data-testid="stFileUploaderFile"] {
+    background: var(--lino);
+    border: 1px solid var(--veta);
+    border-radius: var(--r-control);
+}
+
+[data-testid="stTextArea"] textarea {
+    background: var(--lino-hundido);
+    border-color: var(--veta);
+    border-radius: var(--r-control);
+    color: var(--carbon);
+    font-size: 14px;
+}
+
+[data-testid="stTextArea"] textarea:focus {
+    border-color: var(--terracota);
+    box-shadow: 0 0 0 3px var(--terracota-velo);
+}
+
+.st-key-descartar_nota_voz .stButton > button {
+    background: transparent;
+    border: 1px solid var(--veta-firme);
+    color: var(--nogal);
+}
+
+.st-key-descartar_nota_voz .stButton > button:hover {
+    border-color: var(--terracota);
+    color: var(--terracota);
+    background: transparent;
+}
+
+.st-key-enviar_nota_voz .stButton > button:active,
+.st-key-descartar_nota_voz .stButton > button:active {
+    transform: scale(0.97);
+}
+
+/* EXPERIMENTAL: la forma de onda que se ve al grabar con el ícono nativo del
+   chat_input es de Streamlit (wavesurfer.js) y su tamaño/sensibilidad vienen
+   fijos en su código (fftSize muy bajo, alto igual al botón de enviar) — no
+   hay parámetro público para cambiarlos. Este selector intenta agrandar su
+   contenedor por si acaso; si no hace nada visible, bórralo sin problema. */
+[data-testid="stChatInput"] div:has(> canvas) {
+    height: 64px !important;
+}
+
 @media (max-width: 640px) {
     .dv-title { font-size: 29px; }
     .block-container, [data-testid="stMainBlockContainer"] { padding-top: 2rem; }
