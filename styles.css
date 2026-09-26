@@ -1,0 +1,383 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+
+/* ------------------------------------------------------------------
+   Tokens — materiales de una sala limeña: pared de cal, lino, nogal,
+   arcilla. Un solo acento (terracota); el resto es estructura.
+   ------------------------------------------------------------------ */
+:root {
+    --cal: #F5F1EA;            /* lienzo: pared encalada */
+    --lino: #FBF8F3;           /* superficie elevada */
+    --lino-hundido: #EFE9DF;   /* inputs y mensajes del cliente: hundidos */
+
+    --carbon: #2A2420;         /* texto primario */
+    --nogal: #5E5249;          /* texto secundario */
+    --arena: #8C8076;          /* metadatos */
+    --polvo: #B3A89D;          /* deshabilitado / marcas finas */
+
+    --terracota: #B5532F;      /* acento único: acción e identidad */
+    --terracota-hondo: #96421F;
+    --terracota-velo: rgba(181, 83, 47, 0.10);
+
+    --veta: rgba(74, 52, 36, 0.12);        /* borde estándar */
+    --veta-suave: rgba(74, 52, 36, 0.07);  /* separación suave */
+    --veta-firme: rgba(74, 52, 36, 0.22);  /* énfasis */
+
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Figtree', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+
+    --r-control: 6px;
+    --r-card: 10px;
+    --r-campo: 14px;
+
+    --curva: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* ------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------ */
+html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
+.stApp textarea, .stApp button {
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+.stApp { background: var(--cal); color: var(--carbon); }
+
+[data-testid="stHeader"] { background: transparent; }
+
+.block-container, [data-testid="stMainBlockContainer"] {
+    max-width: 760px;
+    padding-top: 3rem;
+    padding-bottom: 8rem;
+}
+
+/* ------------------------------------------------------------------
+   Encabezado
+   ------------------------------------------------------------------ */
+.dv-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--terracota);
+    margin: 0 0 12px;
+}
+
+.stApp .dv-title {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--carbon);
+    margin: 0 0 12px;
+    text-wrap: balance;
+}
+
+.dv-title em { font-style: italic; color: var(--terracota); }
+
+.dv-lead {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--nogal);
+    max-width: 52ch;
+    margin: 0;
+    text-wrap: pretty;
+}
+
+/* Firma: la wincha. Marcas cada 1 cm, más largas cada 5 y 10. */
+.dv-wincha {
+    position: relative;
+    height: 28px;
+    overflow: hidden;
+    margin: 32px 0 24px;
+    border-top: 1px solid var(--veta-firme);
+    background:
+        linear-gradient(90deg, var(--veta-firme) 1px, transparent 1px) 0 0 / 80px 12px repeat-x,
+        linear-gradient(90deg, var(--veta) 1px, transparent 1px) 0 0 / 40px 8px repeat-x,
+        linear-gradient(90deg, var(--veta-suave) 1px, transparent 1px) 0 0 / 8px 4px repeat-x;
+}
+
+.dv-wincha span {
+    position: absolute;
+    top: 13px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--arena);
+    font-variant-numeric: tabular-nums;
+    transform: translateX(3px);
+}
+
+/* ------------------------------------------------------------------
+   Sugerencias de inicio (estado vacío)
+   ------------------------------------------------------------------ */
+.dv-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--arena);
+    margin: 0 0 8px;
+}
+
+.st-key-sugerencias .stButton > button {
+    width: 100%;
+    height: 100%;
+    justify-content: flex-start;
+    text-align: left;
+    min-height: 44px;
+    padding: 10px 14px;
+    background: var(--lino);
+    border: 1px solid var(--veta);
+    border-radius: var(--r-card);
+    color: var(--carbon);
+    font-size: 14px;
+    font-weight: 500;
+    transition: border-color 160ms var(--curva), background-color 160ms var(--curva), transform 120ms var(--curva);
+}
+
+.st-key-sugerencias .stButton > button > div {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.st-key-sugerencias .stButton > button p {
+    text-align: left;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.4;
+}
+
+.st-key-sugerencias .stButton > button:hover {
+    border-color: var(--terracota);
+    background: var(--lino);
+    color: var(--carbon);
+}
+
+.st-key-sugerencias .stButton > button:active { transform: scale(0.98); }
+
+.st-key-sugerencias .stButton > button:focus-visible {
+    outline: 2px solid var(--terracota);
+    outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------
+   Conversación
+   ------------------------------------------------------------------ */
+[data-testid="stChatMessage"] {
+    background: transparent;
+    padding: 12px 0;
+    gap: 14px;
+}
+
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] li {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--carbon);
+}
+
+[data-testid="stChatMessage"] strong { font-weight: 600; }
+
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] h4 {
+    font-family: var(--serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--carbon);
+}
+
+[data-testid="stChatMessage"] h3 { font-size: 19px; }
+[data-testid="stChatMessage"] h4 { font-size: 16px; }
+
+/* El cliente escribe sobre lino hundido; el asesor habla sobre la pared. */
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) {
+    background: var(--lino-hundido);
+    border-radius: var(--r-card);
+    padding: 12px 16px;
+    margin: 8px 0;
+}
+
+[data-testid="stChatMessageAvatarCustom"] {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from assistant"]) [data-testid="stChatMessageAvatarCustom"] {
+    background: var(--terracota);
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from assistant"]) [data-testid="stChatMessageAvatarCustom"] [data-testid="stIconMaterial"] {
+    color: var(--lino);
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) [data-testid="stChatMessageAvatarCustom"] {
+    background: var(--lino);
+    box-shadow: 0 0 0 1px var(--veta);
+}
+
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) [data-testid="stChatMessageAvatarCustom"] [data-testid="stIconMaterial"] {
+    color: var(--nogal);
+}
+
+/* Streamlit agrega anclas a los títulos; en una conversación sobran */
+[data-testid="stChatMessage"] [data-testid="stHeaderActionElements"] { display: none; }
+
+[data-testid="stChatMessage"] hr {
+    border: none;
+    border-top: 1px solid var(--veta);
+    margin: 24px 0;
+}
+
+[data-testid="stChatMessage"] table {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------
+   Campo de chat: hundido, con la wincha como borde superior
+   ------------------------------------------------------------------ */
+[data-testid="stBottom"], [data-testid="stBottomBlockContainer"] {
+    background: var(--cal);
+}
+
+[data-testid="stChatInput"] {
+    background: var(--lino-hundido);
+    border: 1px solid var(--veta);
+    border-radius: var(--r-campo);
+    transition: border-color 160ms var(--curva);
+}
+
+[data-testid="stChatInput"]:focus-within {
+    border-color: var(--terracota);
+    box-shadow: 0 0 0 3px var(--terracota-velo);
+}
+
+[data-testid="stChatInput"] textarea {
+    font-size: 15px;
+    color: var(--carbon);
+}
+
+[data-testid="stChatInput"] textarea::placeholder { color: var(--arena); }
+
+[data-testid="stChatInputSubmitButton"] {
+    background: var(--terracota);
+    color: var(--lino);
+    border-radius: var(--r-control);
+}
+
+[data-testid="stChatInputSubmitButton"]:disabled {
+    background: transparent;
+    color: var(--polvo);
+}
+
+/* ------------------------------------------------------------------
+   Barra lateral: misma pared, separada solo por una veta
+   ------------------------------------------------------------------ */
+[data-testid="stSidebar"] {
+    background: var(--cal);
+    border-right: 1px solid var(--veta);
+}
+
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] { padding-top: 8px; }
+
+.stApp .dv-ficha-titulo {
+    font-family: var(--serif);
+    font-size: 23px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--carbon);
+    margin: 0 0 4px;
+}
+
+.dv-ficha-nota {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--nogal);
+    margin: 0 0 20px;
+}
+
+[data-testid="stSidebar"] label p {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--nogal);
+}
+
+[data-testid="stSidebar"] [data-baseweb="select"] > div,
+[data-testid="stSidebar"] [data-baseweb="input"],
+[data-testid="stSidebar"] [data-baseweb="base-input"],
+[data-testid="stSidebar"] [data-testid="stNumberInputContainer"] {
+    background: var(--lino-hundido) !important;
+    border-color: var(--veta) !important;
+    border-radius: var(--r-control);
+}
+
+[data-testid="stSidebar"] input { font-variant-numeric: tabular-nums; }
+
+/* Lectura de la medida: la wincha en pequeño */
+.dv-medida {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 12px 14px;
+    margin: 4px 0 20px;
+    background: var(--lino);
+    border: 1px solid var(--veta);
+    border-radius: var(--r-card);
+}
+
+.dv-medida-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--arena);
+}
+
+.dv-medida-valor {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--carbon);
+    font-variant-numeric: tabular-nums;
+}
+
+.dv-medida-valor small { color: var(--arena); font-size: 12px; }
+
+.st-key-reiniciar .stButton > button {
+    width: 100%;
+    min-height: 40px;
+    background: transparent;
+    border: 1px solid var(--veta-firme);
+    border-radius: var(--r-control);
+    color: var(--nogal);
+    font-size: 14px;
+    font-weight: 500;
+    transition: border-color 160ms var(--curva), color 160ms var(--curva), transform 120ms var(--curva);
+}
+
+.st-key-reiniciar .stButton > button:hover {
+    border-color: var(--terracota);
+    color: var(--terracota);
+    background: transparent;
+}
+
+.st-key-reiniciar .stButton > button:active { transform: scale(0.97); }
+
+.dv-pie {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--arena);
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--veta-suave);
+}
+
+@media (max-width: 640px) {
+    .dv-title { font-size: 29px; }
+    .block-container, [data-testid="stMainBlockContainer"] { padding-top: 2rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+}

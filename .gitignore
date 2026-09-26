@@ -1,0 +1,36 @@
+# Secretos: nunca deben subirse a git ni compartirse
+# (.streamlit/config.toml sí se sube: define el tema visual de la app)
+.streamlit/secrets.toml
+.env
+.env.*
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Cache de Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Herramientas de IA y skills instaladas localmente
+.agents/
+.claude/
+.interface-design/
+skills-lock.json
+CLAUDE.local.md
+
+# Editores
+.vscode/
+.idea/
+*.swp
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
