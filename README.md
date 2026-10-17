@@ -41,6 +41,7 @@ El asesor habla en español peruano, trata de "tú" y tiene la instrucción de *
 |---|---|
 | **Chat con IA** | Conversación en tiempo real con memoria mientras la pestaña siga abierta. |
 | **Ficha de tu espacio** | En la barra lateral, el cliente anota ambiente, ancho × largo (la app calcula los m²), estilo y colores. Esa ficha se envía al modelo en cada mensaje, así no vuelve a preguntar lo que ya sabe. |
+| **Sensor del ambiente** | Botón "Conectar sensor" junto a "Adjuntar audio", sobre el campo de chat: el cliente pega el JSON que imprime el sensor DecoView (ESP32 con DHT22 y LDR; la línea `[JSON para el Asesor]`). La app lo valida, muestra temperatura, humedad y luz con su estado (p. ej. "Muy húmeda", "Poca luz") y envía al modelo pautas de materiales, telas y colores según esa lectura. Con la lectura cargada, el botón muestra los valores (p. ej. `21 °C · 84 % · 95 lx`). |
 | **Sugerencias de inicio** | Cuatro preguntas de ejemplo para empezar con un clic. Solo aparecen con la conversación vacía. |
 | **Reiniciar conversación** | Borra el historial y empieza de cero. |
 | **Grabar voz** | Ícono nativo de micrófono dentro del propio campo de chat: graba y al enviarlo se transcribe con `faster-whisper` (100% local) y se manda al asesor de una vez. |

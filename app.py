@@ -1,5 +1,7 @@
+import json
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import streamlit as st
@@ -84,6 +86,7 @@ Si ambos objetivos entran en conflicto, prioriza siempre reducir el riesgo de de
 - Atendemos principalmente Lima Metropolitana.
 - La causa más común de devoluciones es que el mueble no entra, el color no combina o no va con el estilo del ambiente.
 - Contamos con un módulo de visualización 3D llamado "Módulo RD".
+- Algunos clientes tienen el sensor DecoView (un ESP32) que mide temperatura, humedad y luz de su ambiente. Si te llega esa lectura, úsala para elegir materiales, telas y colores que resistan las condiciones reales del espacio.
 - No tienes acceso a un catálogo, precios ni stock en tiempo real.
 
 ## Reglas (no negociables)
@@ -154,6 +157,151 @@ def transcribir_audio(archivo_audio):
         os.remove(ruta_tmp)
 
 
+# Sensor del ambiente (ESP32 + DHT22 + LDR). El nodo imprime en su consola una
+# línea "[JSON para el Asesor] {...}" con este formato:
+# {"Temperatura": 24.5, "Humedad": 62.0, "Luz": 380.2, "Fecha": "17/10/2026",
+#  "Hora": "14:30:05", "Unix Timestamp": 1792265405}
+# Temperatura y Humedad llegan en null si el DHT22 falló en esa lectura.
+RANGOS_SENSOR = {
+    # campo: (mínimo, máximo) que puede reportar el sensor
+    "Temperatura": (-40, 80),   # DHT22, °C
+    "Humedad": (0, 100),        # DHT22, %
+    "Luz": (0, 1000),           # LDR escalado por el ESP32, lux aproximados
+}
+UNIX_MINIMO_CONFIABLE = 1577836800  # 01/01/2020: antes de eso, el ESP32 no sincronizó la hora por NTP
+
+
+def leer_json_sensor(texto):
+    """Valida el JSON del sensor y devuelve un dict limpio, o lanza ValueError con la causa."""
+    # Si pegaron varias líneas de la consola, se usa la última lectura válida
+    for linea in reversed(texto.strip().splitlines()):
+        inicio, fin = linea.find("{"), linea.rfind("}")
+        if inicio != -1 and fin > inicio:
+            try:
+                if isinstance(json.loads(linea[inicio:fin + 1]), dict):
+                    texto = linea
+                    break
+            except json.JSONDecodeError:
+                pass
+
+    inicio, fin = texto.find("{"), texto.rfind("}")
+    if inicio == -1:
+        raise ValueError("No encontré un JSON. Copia la línea que empieza con "
+                         "`[JSON para el Asesor]` en la consola del ESP32, con las llaves `{ }`.")
+    if fin < inicio:
+        raise ValueError("El JSON está incompleto: falta la llave de cierre `}`. Vuelve a copiar la línea completa.")
+    try:
+        datos = json.loads(texto[inicio:fin + 1])
+    except json.JSONDecodeError as e:
+        raise ValueError(f"El JSON está incompleto o mal copiado (columna {e.colno}). "
+                         "Vuelve a copiar la línea completa.")
+    if not isinstance(datos, dict):
+        raise ValueError("El JSON debe ser un objeto con las lecturas, como `{\"Temperatura\": 24.5, ...}`.")
+
+    faltantes = [campo for campo in RANGOS_SENSOR if campo not in datos]
+    if faltantes:
+        raise ValueError(f"Al JSON le falta: {', '.join(faltantes)}. ¿Es la lectura del sensor DecoView?")
+
+    lectura = {}
+    for campo, (minimo, maximo) in RANGOS_SENSOR.items():
+        valor = datos[campo]
+        if valor is None:
+            lectura[campo] = None
+            continue
+        if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+            raise ValueError(f"`{campo}` debe ser un número y llegó `{valor!r}`.")
+        if not minimo <= valor <= maximo:
+            raise ValueError(f"`{campo}` = {valor} está fuera del rango del sensor ({minimo} a {maximo}).")
+        lectura[campo] = float(valor)
+
+    if all(lectura[campo] is None for campo in RANGOS_SENSOR):
+        raise ValueError("La lectura llegó sin ningún dato (todo en `null`). Revisa la conexión de los sensores.")
+
+    lectura["Fecha"] = str(datos.get("Fecha") or "")
+    lectura["Hora"] = str(datos.get("Hora") or "")
+    unix = datos.get("Unix Timestamp")
+    confiable = isinstance(unix, (int, float)) and not isinstance(unix, bool) and unix >= UNIX_MINIMO_CONFIABLE
+    lectura["Unix Timestamp"] = int(unix) if confiable else None
+    return lectura
+
+
+def estado_temperatura(t):
+    if t < 18:
+        return "Fresco"
+    return "Templado" if t <= 26 else "Caluroso"
+
+
+def estado_humedad(h):
+    if h < 30:
+        return "Seca"
+    if h <= 65:
+        return "Normal"
+    return "Húmeda" if h <= 80 else "Muy húmeda"
+
+
+def estado_luz(lux):
+    if lux < 150:
+        return "Poca luz"
+    return "Luz media" if lux <= 600 else "Mucha luz"
+
+
+# Qué implica cada estado para elegir el mueble (los estados "normales" no agregan pauta)
+PAUTAS_SENSOR = {
+    "Fresco": "ambiente fresco: suman telas cálidas al tacto (chenille, pana, lana) y tonos cálidos.",
+    "Caluroso": "ambiente caluroso: prefiere telas frescas y transpirables (lino, algodón); "
+                "el cuero sintético y el terciopelo se sienten calurosos.",
+    "Seca": "aire seco: la madera maciza sin sellar puede rajarse o encogerse; conviene un acabado sellado o laminado.",
+    "Húmeda": "humedad alta: evita MDF o aglomerado sin sellar; prefiere madera tratada, melamina con cantos sellados, "
+              "metal con pintura electrostática y telas fáciles de limpiar; deja unos cm de separación de la pared.",
+    "Muy húmeda": "humedad muy alta (riesgo de moho e hinchazón): descarta MDF o aglomerado sin sellar y telas que "
+                  "guardan humedad; prefiere madera tratada, metal con pintura electrostática o materiales sintéticos, "
+                  "y separa el mueble de la pared.",
+    "Poca luz": "poca luz natural: colores claros y cálidos y superficies que reflejen la luz; "
+                "evita muebles oscuros y voluminosos que achican el espacio.",
+    "Mucha luz": "mucha luz o sol directo: telas y acabados con protección UV o colores que no se decoloren; "
+                 "los tonos oscuros y saturados se destiñen con el sol.",
+}
+
+
+# Versión corta de cada pauta, para mostrarle al cliente qué hará el asesor con su lectura
+CONSEJOS_SENSOR = {
+    "Fresco": "telas cálidas al tacto y tonos cálidos.",
+    "Caluroso": "telas frescas como lino o algodón; nada de cuero sintético.",
+    "Seca": "madera con acabado sellado para que no se raje.",
+    "Húmeda": "nada de MDF sin sellar; madera tratada o melamina sellada.",
+    "Muy húmeda": "materiales anti-humedad y el mueble separado de la pared.",
+    "Poca luz": "colores claros que reflejen la luz.",
+    "Mucha luz": "telas y acabados con protección UV.",
+}
+
+
+def hace_cuanto(unix):
+    segundos = time.time() - unix
+    if segundos < -300:
+        return None  # el reloj del ESP32 y el de este equipo no coinciden
+    if segundos < 60:
+        return "hace un momento"
+    if segundos < 3600:
+        return f"hace {int(segundos // 60)} min"
+    if segundos < 86400:
+        return f"hace {int(segundos // 3600)} h"
+    dias = int(segundos // 86400)
+    return "hace 1 día" if dias == 1 else f"hace {dias} días"
+
+
+def procesar_json_sensor():
+    try:
+        st.session_state.sensor = leer_json_sensor(st.session_state.sensor_json_texto)
+        st.session_state.sensor_json_texto = ""
+        st.session_state.pop("sensor_error", None)
+    except ValueError as e:
+        st.session_state.sensor_error = str(e)
+
+
+def quitar_lectura_sensor():
+    st.session_state.pop("sensor", None)
+
+
 def reiniciar_conversacion():
     st.session_state.messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     st.session_state.pop("pendiente", None)
@@ -220,6 +368,33 @@ def contexto_ficha():
     return "Ficha del espacio que llenó el cliente (úsala, no la vuelvas a preguntar):\n- " + "\n- ".join(datos)
 
 
+def contexto_sensor():
+    sensor = st.session_state.get("sensor")
+    if not sensor:
+        return None
+    datos, pautas = [], []
+    for campo, unidad, estado in (("Temperatura", "°C", estado_temperatura),
+                                  ("Humedad", "%", estado_humedad),
+                                  ("Luz", "lux aprox.", estado_luz)):
+        valor = sensor[campo]
+        if valor is None:
+            datos.append(f"{campo}: sin dato (el sensor falló en esta lectura)")
+            continue
+        estado_txt = estado(valor)
+        datos.append(f"{campo}: {valor:g} {unidad} ({estado_txt})")
+        if estado_txt in PAUTAS_SENSOR:
+            pautas.append(PAUTAS_SENSOR[estado_txt])
+    if sensor["Fecha"]:
+        datos.append(f"Medido: {sensor['Fecha']} {sensor['Hora']} (hora de Perú)")
+
+    texto = ("Lectura del sensor DecoView en el ambiente del cliente (medición puntual, real). "
+             "Tenla en cuenta al elegir materiales, telas y colores; menciona el dato solo cuando "
+             "justifique tu recomendación, sin recitar todas las cifras:\n- " + "\n- ".join(datos))
+    if pautas:
+        texto += "\nPautas según la lectura:\n- " + "\n- ".join(pautas)
+    return texto
+
+
 # Mostrar los mensajes previos del historial en la interfaz
 for message in st.session_state.messages:
     if message["role"] != "system":
@@ -241,8 +416,96 @@ if len(st.session_state.messages) == 1:
 if "version_uploader_audio" not in st.session_state:
     st.session_state.version_uploader_audio = 0
 
-with st.container(key="adjuntar_audio"):
-    with st.popover("Adjuntar audio", icon=":material/attach_file:"):
+
+def panel_sensor():
+    """Contenido del popover del sensor: pegar el JSON o, si ya hay lectura, mostrarla."""
+    sensor = st.session_state.get("sensor")
+    if not sensor:
+        st.markdown(
+            '<p class="dv-panel-titulo">Sensor del ambiente</p>'
+            '<p class="dv-panel-nota">Con la lectura de tu sensor DecoView elijo materiales que aguanten '
+            'la temperatura, humedad y luz reales de tu espacio.</p>',
+            unsafe_allow_html=True,
+        )
+        st.text_area(
+            "Pega aquí la línea `[JSON para el Asesor]` de la consola del ESP32",
+            key="sensor_json_texto",
+            height=110,
+            placeholder='{"Temperatura": 24.5, "Humedad": 62.0, "Luz": 380.2, ...}',
+        )
+        st.button("Leer sensor", key="leer_sensor", type="primary", on_click=procesar_json_sensor,
+                  icon=":material/sensors:", width="stretch")
+        if st.session_state.get("sensor_error"):
+            st.error(st.session_state.sensor_error, icon=":material/error:")
+        return
+
+    celdas, consejos = "", ""
+    for etiqueta, campo, formato, unidad, estado in (
+        ("Temperatura", "Temperatura", "{:.1f}", "°C", estado_temperatura),
+        ("Humedad", "Humedad", "{:.0f}", "%", estado_humedad),
+        ("Luz", "Luz", "{:.0f}", "lx", estado_luz),
+    ):
+        valor = sensor[campo]
+        if valor is None:
+            valor_html, estado_txt, alerta = "—", "Sin dato", False
+        else:
+            valor_html = f"{formato.format(valor)}<small>{unidad}</small>"
+            estado_txt = estado(valor)
+            alerta = estado_txt in PAUTAS_SENSOR
+        if alerta:
+            consejos += f'<li><strong>{estado_txt}</strong> — {CONSEJOS_SENSOR[estado_txt]}</li>'
+        celdas += (
+            f'<div class="dv-sensor-dato"><span class="dv-sensor-label">{etiqueta}</span>'
+            f'<span class="dv-sensor-valor">{valor_html}</span>'
+            f'<span class="dv-sensor-estado{" dv-sensor-alerta" if alerta else ""}">{estado_txt}</span></div>'
+        )
+    momento = " · ".join(parte for parte in (sensor["Fecha"], sensor["Hora"][:5]) if parte)
+    if sensor["Unix Timestamp"]:
+        momento = " · ".join(parte for parte in (momento, hace_cuanto(sensor["Unix Timestamp"])) if parte)
+    else:
+        momento = "Sin hora confiable (el ESP32 no sincronizó su reloj)"
+    aviso = ""
+    if sensor["Temperatura"] is None and sensor["Humedad"] is None:
+        aviso = ('<p class="dv-panel-aviso"><strong>El DHT22 no respondió</strong>: llegó sin temperatura ni '
+                 'humedad. Revisa que su pin de datos vaya al GPIO 15 y que tenga VCC y GND.</p>')
+    if consejos:
+        consejos = f'<p class="dv-label">Lo tendré en cuenta así</p><ul class="dv-consejos">{consejos}</ul>'
+    elif None not in (sensor["Temperatura"], sensor["Humedad"], sensor["Luz"]):
+        consejos = '<p class="dv-panel-nota">Tu ambiente está en rangos normales: no hay restricciones de material.</p>'
+    st.markdown(
+        f'<p class="dv-panel-titulo">Lectura de tu ambiente</p>'
+        f'<div class="dv-sensor"><div class="dv-sensor-datos">{celdas}</div>'
+        f'<p class="dv-sensor-pie">{momento}</p></div>{aviso}{consejos}',
+        unsafe_allow_html=True,
+    )
+    st.button("Cambiar lectura", key="quitar_sensor", on_click=quitar_lectura_sensor,
+              icon=":material/refresh:", width="stretch")
+
+
+def etiqueta_sensor():
+    sensor = st.session_state.get("sensor")
+    if not sensor:
+        return "Conectar sensor"
+    # Solo los datos que llegaron: si el DHT22 falló, el botón muestra únicamente la luz
+    return " · ".join(
+        f"{sensor[campo]:.0f}{unidad}"
+        for campo, unidad in (("Temperatura", " °C"), ("Humedad", " %"), ("Luz", " lx"))
+        if sensor[campo] is not None
+    )
+
+
+# Fila de acciones sobre el campo de chat: siempre a la vista, sin tener que
+# bajar por la barra lateral. El botón del sensor muestra la lectura activa.
+with st.container(key="acciones", horizontal=True, gap="small"):
+    with st.container(key="sensor", width="content"):
+        with st.popover(etiqueta_sensor(), icon=":material/sensors:", key="popover_sensor"):
+            panel_sensor()
+        if st.session_state.get("sensor"):
+            # Marca invisible para que el CSS pinte el botón como "conectado"
+            st.markdown('<span class="dv-sensor-activo"></span>', unsafe_allow_html=True)
+
+    with st.container(key="adjuntar_audio", width="content"), \
+            st.popover("Adjuntar audio", icon=":material/attach_file:"):
         st.caption("Sube un archivo y lo transcribo — revisas el texto y recién lo envías.")
         audio_subido = st.file_uploader(
             "Sube un archivo de audio",
@@ -307,9 +570,9 @@ if prompt:
     with st.chat_message("assistant", avatar=AVATARES["assistant"]):
         message_placeholder = st.empty()
         mensajes = list(st.session_state.messages)
-        ficha = contexto_ficha()
-        if ficha:
-            mensajes.insert(1, {"role": "system", "content": ficha})
+        contextos = [c for c in (contexto_ficha(), contexto_sensor()) if c]
+        for i, contexto in enumerate(contextos, start=1):
+            mensajes.insert(i, {"role": "system", "content": contexto})
         try:
             with st.spinner("Tomando medidas…"):
                 response = client.chat.completions.create(

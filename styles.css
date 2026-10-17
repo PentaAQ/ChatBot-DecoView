@@ -344,6 +344,171 @@ html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
 
 .dv-medida-valor small { color: var(--arena); font-size: 12px; }
 
+/* ------------------------------------------------------------------
+   Sensor del ambiente: vive en un popover junto a "Adjuntar audio".
+   La lectura va en tres celdas, como una ficha técnica. Terracota
+   solo marca el estado que cambia la recomendación (húmeda, poca
+   luz…); el resto se queda en arena.
+   ------------------------------------------------------------------ */
+[data-testid="stPopoverBody"] .dv-panel-titulo {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--carbon);
+    margin: 0 0 4px;
+}
+
+[data-testid="stPopoverBody"] .dv-panel-nota {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--nogal);
+    margin: 0 0 12px;
+}
+
+.dv-sensor {
+    margin: 4px 0 16px;
+    background: var(--lino);
+    border: 1px solid var(--veta);
+    border-radius: var(--r-card);
+    overflow: hidden;
+}
+
+.dv-sensor-datos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.dv-sensor-dato {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding: 12px 10px;
+}
+
+.dv-sensor-dato + .dv-sensor-dato { border-left: 1px solid var(--veta-suave); }
+
+.dv-sensor-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--arena);
+}
+
+.dv-sensor-valor {
+    font-family: var(--mono);
+    font-size: 16px;
+    color: var(--carbon);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.dv-sensor-valor small {
+    margin-left: 2px;
+    font-size: 11px;
+    color: var(--arena);
+}
+
+.dv-sensor-estado {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--arena);
+}
+
+.dv-sensor-estado.dv-sensor-alerta { color: var(--terracota); }
+
+[data-testid="stPopoverBody"] .dv-sensor-pie {
+    margin: 0;
+    padding: 8px 10px;
+    border-top: 1px solid var(--veta-suave);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--arena);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Qué hará el asesor con la lectura: una línea por estado relevante */
+[data-testid="stPopoverBody"] .dv-label { margin: 0 0 8px; }
+
+/* Problema del hardware (p. ej. DHT22 sin respuesta): nota con filo terracota */
+[data-testid="stPopoverBody"] .dv-panel-aviso {
+    margin: -4px 0 16px;
+    padding: 8px 12px;
+    border-left: 2px solid var(--terracota);
+    background: var(--terracota-velo);
+    border-radius: 0 var(--r-control) var(--r-control) 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--nogal);
+}
+
+[data-testid="stPopoverBody"] .dv-panel-aviso strong { color: var(--carbon); font-weight: 600; }
+
+[data-testid="stPopoverBody"] code {
+    background: var(--lino-hundido);
+    color: var(--terracota-hondo);
+}
+
+[data-testid="stPopoverBody"] .dv-consejos {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+}
+
+[data-testid="stPopoverBody"] .dv-consejos li {
+    position: relative;
+    margin: 0 0 6px;
+    padding-left: 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--nogal);
+}
+
+.dv-consejos li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--terracota);
+}
+
+.dv-consejos strong { color: var(--carbon); font-weight: 600; }
+
+.st-key-sensor_json_texto textarea {
+    font-family: var(--mono);
+    font-size: 12px;
+}
+
+.st-key-leer_sensor .stButton > button {
+    background: var(--terracota);
+    border-color: var(--terracota);
+    color: var(--lino);
+}
+
+.st-key-leer_sensor .stButton > button:hover {
+    background: var(--terracota-hondo);
+    border-color: var(--terracota-hondo);
+    color: var(--lino);
+}
+
+.st-key-quitar_sensor .stButton > button {
+    background: transparent;
+    border: 1px solid var(--veta-firme);
+    color: var(--nogal);
+}
+
+.st-key-quitar_sensor .stButton > button:hover {
+    border-color: var(--terracota);
+    color: var(--terracota);
+    background: transparent;
+}
+
+.st-key-leer_sensor .stButton > button:active,
+.st-key-quitar_sensor .stButton > button:active { transform: scale(0.97); }
+
 .st-key-reiniciar .stButton > button {
     width: 100%;
     min-height: 40px;
@@ -382,11 +547,11 @@ html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
     color: var(--arena);
 }
 
-.st-key-adjuntar_audio {
+.st-key-acciones {
     margin: 4px 0 8px;
 }
 
-.st-key-adjuntar_audio button {
+.st-key-acciones [data-testid="stPopoverButton"] {
     width: auto;
     min-height: 36px;
     padding: 0 14px;
@@ -396,16 +561,41 @@ html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
     color: var(--nogal);
     font-size: 13px;
     font-weight: 500;
-    transition: border-color 160ms var(--curva), color 160ms var(--curva);
+    transition: border-color 160ms var(--curva), color 160ms var(--curva), background-color 160ms var(--curva);
 }
 
-.st-key-adjuntar_audio button:hover {
+.st-key-acciones [data-testid="stPopoverButton"]:hover {
     border-color: var(--terracota);
     color: var(--terracota);
     background: transparent;
 }
 
+/* Sensor conectado: el botón se vuelve una pastilla con la lectura en vivo */
+.st-key-sensor:has(.dv-sensor-activo) [data-testid="stPopoverButton"] {
+    background: var(--lino);
+    border-color: var(--terracota);
+    color: var(--carbon);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 0 3px var(--terracota-velo);
+}
+
+.st-key-sensor:has(.dv-sensor-activo) [data-testid="stPopoverButton"] [data-testid="stIconMaterial"] {
+    color: var(--terracota);
+}
+
+.st-key-sensor:has(.dv-sensor-activo) [data-testid="stPopoverButton"]:hover {
+    background: var(--lino);
+    color: var(--terracota);
+}
+
+/* La marca solo existe para el :has() de arriba; no ocupa espacio */
+.st-key-sensor [data-testid="stElementContainer"]:has(.dv-sensor-activo) { display: none; }
+
 [data-testid="stPopoverBody"] {
+    /* El panel se dibuja fuera de la fila (portal): ancho fijo para la ficha del sensor */
+    width: min(360px, calc(100vw - 32px));
     background: var(--lino);
     border: 1px solid var(--veta);
     border-radius: var(--r-card);
@@ -475,6 +665,7 @@ html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
 
 @media (max-width: 640px) {
     .dv-title { font-size: 29px; }
+    .st-key-acciones [data-testid="stPopoverButton"] { padding: 0 10px; }
     .block-container, [data-testid="stMainBlockContainer"] { padding-top: 2rem; }
 }
 
