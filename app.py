@@ -1,5 +1,7 @@
+import html
 import json
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -123,6 +125,7 @@ Si ambos objetivos entran en conflicto, prioriza siempre reducir el riesgo de de
 - Observación o pregunta empática (una línea)
 - Recomendación clara y justificada
 - 1 o 2 alternativas
+- Si hay lectura del sensor DecoView: la línea "**Según tu sensor:**" justo después de la recomendación
 - Invitación a visualizar en el Módulo RD o a seguir preguntando
 """
 
@@ -388,18 +391,55 @@ def contexto_sensor():
         datos.append(f"Medido: {sensor['Fecha']} {sensor['Hora']} (hora de Perú)")
 
     texto = ("Lectura del sensor DecoView en el ambiente del cliente (medición puntual, real). "
-             "Tenla en cuenta al elegir materiales, telas y colores; menciona el dato solo cuando "
-             "justifique tu recomendación, sin recitar todas las cifras:\n- " + "\n- ".join(datos))
+             "Tenla en cuenta al elegir materiales, telas y colores:\n- " + "\n- ".join(datos))
     if pautas:
         texto += "\nPautas según la lectura:\n- " + "\n- ".join(pautas)
+    texto += ("\nHaz notorio que usaste esta lectura: cada vez que recomiendes un mueble, material, tela "
+              "o color, agrega justo después de la recomendación principal UNA sola línea que empiece "
+              "exactamente con \"**Según tu sensor:**\" y explique en una o dos frases qué dato medido "
+              "(con su valor) cambió tu recomendación y cómo. No recites todas las cifras. En saludos o "
+              "respuestas sin recomendación, no agregues esa línea.")
     return texto
+
+
+# Línea "Según tu sensor: …" que el modelo agrega cuando usó la lectura (ver contexto_sensor)
+PATRON_NOTA_SENSOR = re.compile(
+    r"^[ \t]*(?:[-*>][ \t]*)?(?:\*\*)?[ \t]*Según tu sensor[ \t]*:?[ \t]*(?:\*\*)?[ \t]*:?[ \t]*(.+)$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def mostrar_respuesta(contenido, sensor=None):
+    """Pinta una respuesta del asesor; si usó el sensor, lo hace visible con etiqueta y nota destacada."""
+    nota = PATRON_NOTA_SENSOR.search(contenido)
+    if not nota:
+        st.markdown(contenido)
+        return
+    if sensor:
+        st.markdown(f'<p class="dv-sensor-chip">Considerando tu sensor · {html.escape(sensor)}</p>',
+                    unsafe_allow_html=True)
+    antes, despues = contenido[:nota.start()].strip(), contenido[nota.end():].strip()
+    texto_nota = nota.group(1).strip()
+    texto_nota = texto_nota[0].upper() + texto_nota[1:]
+    texto_nota = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", html.escape(texto_nota))
+    if antes:
+        st.markdown(antes)
+    st.markdown(
+        f'<div class="dv-sensor-nota"><p class="dv-sensor-nota-titulo">Según tu sensor</p><p>{texto_nota}</p></div>',
+        unsafe_allow_html=True,
+    )
+    if despues:
+        st.markdown(despues)
 
 
 # Mostrar los mensajes previos del historial en la interfaz
 for message in st.session_state.messages:
     if message["role"] != "system":
         with st.chat_message(message["role"], avatar=AVATARES[message["role"]]):
-            st.markdown(message["content"])
+            if message["role"] == "assistant":
+                mostrar_respuesta(message["content"], message.get("sensor"))
+            else:
+                st.markdown(message["content"])
 
 # Estado vacío: sugerencias para empezar
 if len(st.session_state.messages) == 1:
@@ -569,7 +609,9 @@ if prompt:
     # Generar la respuesta del modelo
     with st.chat_message("assistant", avatar=AVATARES["assistant"]):
         message_placeholder = st.empty()
-        mensajes = list(st.session_state.messages)
+        # Solo role y content: el historial guarda además qué lectura del sensor usó cada respuesta
+        mensajes = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+        sensor_usado = etiqueta_sensor() if st.session_state.get("sensor") else None
         contextos = [c for c in (contexto_ficha(), contexto_sensor()) if c]
         for i, contexto in enumerate(contextos, start=1):
             mensajes.insert(i, {"role": "system", "content": contexto})
@@ -599,8 +641,11 @@ if prompt:
                 else:
                     st.warning("🤔 El modelo respondió vacío. Intenta reformular tu mensaje.")
             else:
-                message_placeholder.markdown(full_response)
-                st.session_state.messages.append({"role": "assistant", "content": full_response})
+                with message_placeholder.container():
+                    mostrar_respuesta(full_response, sensor_usado)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": full_response, "sensor": sensor_usado}
+                )
 
         except openai.AuthenticationError:
             st.error(

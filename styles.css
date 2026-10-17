@@ -223,6 +223,56 @@ html, body, .stApp, .stApp p, .stApp li, .stApp label, .stApp input,
     color: var(--nogal);
 }
 
+/* Respuesta que usó el sensor: etiqueta arriba y la nota "Según tu sensor"
+   como una ficha con filo terracota, para que se vea qué cambió la lectura */
+[data-testid="stChatMessage"] .dv-sensor-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 4px;
+    padding: 4px 10px;
+    background: var(--terracota-velo);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--terracota-hondo);
+    font-variant-numeric: tabular-nums;
+}
+
+.dv-sensor-chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--terracota);
+    box-shadow: 0 0 0 3px rgba(181, 83, 47, 0.18);
+}
+
+.dv-sensor-nota {
+    margin: 4px 0 16px;
+    padding: 12px 16px;
+    background: var(--lino);
+    border: 1px solid var(--veta);
+    border-left: 3px solid var(--terracota);
+    border-radius: 0 var(--r-card) var(--r-card) 0;
+}
+
+[data-testid="stChatMessage"] .dv-sensor-nota p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+[data-testid="stChatMessage"] .dv-sensor-nota .dv-sensor-nota-titulo {
+    margin: 0 0 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--terracota);
+}
+
 /* Streamlit agrega anclas a los títulos; en una conversación sobran */
 [data-testid="stChatMessage"] [data-testid="stHeaderActionElements"] { display: none; }
 
